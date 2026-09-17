@@ -1,0 +1,13 @@
+{
+    "explorer.excludeGitIgnore": false,
+    "explorer.compactFolders": false,
+    "files.exclude": {
+        "**/.minigit": false,
+        "**/build": false,
+        "**/*.exe": false
+    },
+    "files.insertFinalNewline": true,
+    "files.trimTrailingWhitespace": true,
+    "C_Cpp.default.cppStandard": "c++17",
+    "terminal.integrated.cwd": "${workspaceFolder}"
+}

@@ -1,0 +1,18 @@
+# Generated programs and build output
+*.exe
+*.o
+*.obj
+*.pdb
+/build/
+
+# Mini Git data and practice files
+.minigit/
+/sandbox/
+
+# Machine-specific compiler configuration
+/.vscode/c_cpp_properties.json
+
+# OS metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
