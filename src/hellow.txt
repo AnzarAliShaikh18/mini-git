@@ -1,0 +1,3 @@
+Hello Mini Git!
+This is my first tracked file.
+store new object
