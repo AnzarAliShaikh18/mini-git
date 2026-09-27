@@ -1,0 +1,106 @@
+{
+  "configurations": [
+    {
+      "externalConsole": false,
+      "name": "Mini Git: init",
+      "args": [
+        "init"
+      ],
+      "environment": [
+        {
+          "name": "PATH",
+          "value": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
+        }
+      ],
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/minigit.exe",
+      "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
+      "preLaunchTask": "Mini Git: build",
+      "stopAtEntry": false,
+      "MIMode": "gdb",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "externalConsole": false,
+      "name": "Mini Git: add",
+      "args": [
+        "add",
+        "${input:filePath}"
+      ],
+      "environment": [
+        {
+          "name": "PATH",
+          "value": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
+        }
+      ],
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/minigit.exe",
+      "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
+      "preLaunchTask": "Mini Git: build",
+      "stopAtEntry": false,
+      "MIMode": "gdb",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "externalConsole": false,
+      "name": "Mini Git: commit",
+      "args": [
+        "commit",
+        "-m",
+        "${input:commitMessage}"
+      ],
+      "environment": [
+        {
+          "name": "PATH",
+          "value": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
+        }
+      ],
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/minigit.exe",
+      "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
+      "preLaunchTask": "Mini Git: build",
+      "stopAtEntry": false,
+      "MIMode": "gdb",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "externalConsole": false,
+      "name": "Mini Git: log",
+      "args": [
+        "log"
+      ],
+      "environment": [
+        {
+          "name": "PATH",
+          "value": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
+        }
+      ],
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/minigit.exe",
+      "miDebuggerPath": "C:/msys64/ucrt64/bin/gdb.exe",
+      "preLaunchTask": "Mini Git: build",
+      "stopAtEntry": false,
+      "MIMode": "gdb",
+      "cwd": "${workspaceFolder}"
+    }
+  ],
+  "version": "0.2.0",
+  "inputs": [
+    {
+      "id": "filePath",
+      "type": "promptString",
+      "default": "hello.txt",
+      "description": "File to stage (relative to project root)"
+    },
+    {
+      "id": "commitMessage",
+      "type": "promptString",
+      "default": "Day 3: save staged files",
+      "description": "Commit message"
+    }
+  ]
+}

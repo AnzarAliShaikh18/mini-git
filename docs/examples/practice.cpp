@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <string>
 int main(){
-    std::ifstream file("practice.cpp");
+    std::ifstream file(__FILE__);
     if(!file){
         std::cerr<<"Error: could not open practice.cpp for reading.";
         return 1;

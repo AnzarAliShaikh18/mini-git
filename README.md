@@ -1,179 +1,169 @@
 # Mini Git
 
-A small version-control system built in C++17 to learn how Git works internally,
-one feature at a time.
+A small version-control system written in C++17, built one day at a time to
+learn how Git stores files and connects snapshots into history.
 
-**Current milestone: Day 2 - file hashing, object storage, and staging.**
-`init` initializes a repository; `add <file>` stores its contents and updates the
-staging index. Commits, history, and checkout are future work. This is a learning project, not a replacement for Git.
+**Day 3 complete:** initialize a repository, stage file contents, save commits
+with timestamps and parent links, and display history with `log`.
 
-## Project layout
+## Quick start on Windows
+
+Open the whole `D:\mini-git` folder in VS Code. Save your source and press
+**Ctrl+Shift+B** to build. Run these commands from the project root:
+
+```powershell
+cd D:\mini-git
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1
+.\build\minigit.exe init
+.\build\minigit.exe add hello.txt
+.\build\minigit.exe commit -m "My first commit"
+.\build\minigit.exe log
+```
+
+Requirements: a C++17-capable `g++` on PATH and PowerShell. This Windows setup
+uses MSYS2 UCRT64 GCC. Debugging uses the Microsoft C/C++ extension and
+`C:/msys64/ucrt64/bin/gdb.exe`; adjust compiler/debugger paths on another machine.
+
+**Terminal > Run Task > Mini Git: init / add / commit / log** builds first and
+runs from the project root. Add and commit prompt for the filename and message.
+The same commands are available in **Run and Debug** for F5. Always use
+`build/minigit.exe` when running from a terminal.
+
+## Project structure
+
+The core learning example is:
 
 ```text
 mini-git/
-|-- src/main.cpp              # init, add, hashing, object storage, and staging
-|-- src/hellow.txt            # Day 2 sample input
-|-- practice.cpp             # Separate file-reading exercise
-|-- include/README.md         # Place for future C++ headers
-|-- docs/
-|   |-- day-01.md             # Day 1 learning journal
-|   |-- day-02.md             # Day 2 learning journal
-|   `-- day-template.md       # Copy this for each new day
-|-- scripts/
-|   |-- build.ps1             # Build all .cpp files under src
-|   `-- test.ps1              # Check Day 1 in a temporary directory
-|-- .vscode/
-|   |-- settings.json        # Shared project settings
-|   `-- tasks.json           # Build and test shortcuts
-|-- .gitattributes
-|-- .gitignore
-`-- README.md
+|-- src/
+|   `-- main.cpp
+|-- hello.txt
+`-- .minigit/                 # Generated locally
+    |-- HEAD
+    |-- index
+    |-- objects/
+    |   |-- <file-content-hash>
+    |   `-- <commit-hash>
+    `-- refs/
+        `-- heads/
+            `-- main
 ```
 
-Local-only items include `.git/` (real Git history), `build/` (compiled output),
-`.minigit/` (this program's data), and `.vscode/c_cpp_properties.json` (local
-compiler configuration). The original executable is preserved locally as
-`build/legacy-day1.exe`; use the freshly built `build/minigit.exe`.
+`index` appears after the first `add`; `refs/heads/main` appears after the first
+successful commit. Hashes are computed from actual content and will differ
+from example values in a lesson.
 
-## Open the project in VS Code
+Supporting files remain separate:
 
-Use **File > Open Folder** and choose the whole `mini-git` folder, not just
-`src` or `main.cpp`. On the original Windows setup this is `D:\mini-git`.
+```text
+.vscode/                     # Build tasks, run/debug configurations, settings
+scripts/                     # build.ps1, run.ps1, test.ps1
+docs/                        # Daily learning notes
+    examples/practice.cpp    # Earlier exercise, excluded from the normal build
+build/                       # Generated executable and local migration backups
+.gitignore                   # Excludes binaries and Mini Git data from real Git
+.gitattributes               # Text and line-ending rules
+README.md
+```
 
-- **Ctrl+Shift+E** opens Explorer: the project folders and files.
-- **Ctrl+B** toggles the sidebar if it is hidden.
-- **Ctrl+Shift+G** opens Source Control: changed files, not the complete file list.
-- GitHub shows committed and pushed files. It does not store empty directories;
-  `include/README.md` gives the future header folder a useful tracked file.
-- Generated files remain visible in Explorer but are ignored by Git. `.git/`
-  remains hidden by VS Code's normal defaults; do not edit or delete it.
+`src/` contains only program source. `hello.txt` is the tracked sample input.
+`build/` and `.minigit/` are ignored. The separate `.git/` directory contains
+this project's real Git history and is managed by Git itself.
 
-## Build on Windows
+## Commands
 
-Requirements: a C++17-capable GCC compiler (`g++`) on PATH and PowerShell.
-The current machine has TDM-GCC 10.3.0. The Microsoft C/C++ VS Code extension
-provides code navigation and diagnostics; the compiler builds the program.
+| Command | Behavior |
+| --- | --- |
+| `init` | Creates objects, refs/heads, and symbolic HEAD; preserves an existing repository. |
+| `add <file>` | Reads exact bytes, hashes and stores them, and updates the filename/hash index. |
+| `commit -m "message"` | Saves the entire staged snapshot as a commit object and advances main. |
+| `log` | Follows parent links from the newest commit to the first. |
 
-From the project root:
+Quote filenames containing spaces. Run from the repository root: metadata paths
+are relative to the current directory. Running `init` inside `src` would create
+a different repository; parent-folder discovery is not implemented.
+
+## How commits work
+
+Commit text is hashed using the same 64-bit FNV-1a helper as file contents, then
+stored in `.minigit/objects/<commit-hash>`:
+
+```text
+message My first commit
+timestamp <Unix timestamp>
+parent none
+
+"hello.txt" <file-content-hash>
+```
+
+Later commits store the previous commit's hash in `parent`. A commit reads the
+index and stored objects, so editing a working file after `add` does not change
+the staged version. Run `add` again to stage new contents.
+
+The index remains after a commit and represents the complete next snapshot;
+unchanged files stay included. This version permits a new commit without file
+changes and does not implement Git's "nothing changed" detection.
+
+```text
+HEAD -> refs/heads/main -> newest commit -> parent -> earlier commit
+                              |
+                              +-> filename/hash entries -> saved file objects
+```
+
+Edit and save `hello.txt`, then try a second commit:
+
+```powershell
+.\build\minigit.exe add hello.txt
+.\build\minigit.exe commit -m "Update hello"
+.\build\minigit.exe log
+$commitHash = (Get-Content .\.minigit\refs\heads\main -Raw).Trim()
+Get-Content ".\.minigit\objects\$commitHash"
+```
+
+The second commit's parent points to the first. Log prints newest first.
+
+## Verification
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1
-```
-
-Or press **Ctrl+Shift+B** in VS Code. This builds all `.cpp` files under `src`
-with C++17 and warnings enabled, writing `build/minigit.exe`.
-The execution-policy option applies only to this script process; it does not
-change the computer's saved policy.
-
-## Run and check Day 1
-
-```powershell
-.\build\minigit.exe init
-.\build\minigit.exe init
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\test.ps1
 ```
 
-The first `init` creates this in the **current working folder**:
+Or run **Mini Git: test** in VS Code to build and test together. The suite passes
+**69 checks** covering initialization, known hashes, duplicate object reuse,
+spaces in paths/messages, exact staged snapshots, commit hashes, parent links,
+three-commit history, empty/binary files, and missing or corrupt data. Tests use
+a fresh temporary directory and preserve your real `.minigit` data. The build
+enables C++17 and compiler warnings.
 
-```text
-.minigit/
-|-- HEAD                      # ref: refs/heads/main
-|-- objects/
-`-- refs/
-    `-- heads/
-```
+## Commit and push Day 3 with real Git
 
-The second `init` reports that the repository already exists and preserves its
-contents. No branch commit file is created yet. An existing incomplete structure
-or a file named `.minigit` produces an error instead of being overwritten.
-Filesystem or write failures return a nonzero exit code; failed initialization
-may leave a partial directory that should be inspected manually.
-
-The test script uses its own temporary directory and removes only that directory
-afterwards. It checks initialization, HEAD contents, repeated initialization,
-invalid arguments, and conflicting or incomplete metadata. In VS Code, use
-**Terminal > Run Task > Mini Git: test** to build and test together.
-
-`main` inside `.minigit/HEAD` is the future branch of the toy repository.
-The real GitHub project's branch is currently `master`; these are separate.
-
-## Day 2: add a file to the staging area
-
-Run these commands from the project root after building:
+Review the changes before publishing:
 
 ```powershell
-.\build\minigit.exe init
-.\build\minigit.exe add src/hellow.txt
-Get-Content .\.minigit\index
-```
-
-For a path with spaces, quote it: `minigit add "my notes.txt"`.
-
-The command reads the exact file bytes in binary mode, calculates a 64-bit
-FNV-1a hash, stores the bytes in `.minigit/objects/<hash>`, and records the
-supplied filename and hash in `.minigit/index`.
-
-```text
-.minigit/
-|-- HEAD
-|-- index                     # Quoted filename + content hash
-|-- objects/
-|   `-- <16-character hash>   # Stored file bytes
-`-- refs/
-    `-- heads/
-```
-
-Adding a changed file updates its index entry. Adding identical content reuses
-its object, but still updates the requested filename's staging entry. Old objects
-remain stored. Staging is not a commit; commit support is still future work.
-
-FNV-1a is used for educational simplicity and is not collision-proof. This
-version supports one regular file per command, uses paths as supplied, and
-rewrites the index directly. Recursive add, path normalization, staged deletion,
-and atomic index updates are not implemented.
-
-`practice.cpp` is a separate Day 2 file-reading exercise with its own `main()`.
-It stays outside `src/` and is not included in the regular Mini Git build.
-`src/hellow.txt` is a tracked learning example; generated metadata and binaries
-remain ignored.
-
-The Day 2 update was verified with **30 passing checks** on the unchanged code:
-14 existing Day 1 checks and 16 additional temporary checks for staging and
-object storage. The checked-in `scripts/test.ps1` remains the Day 1 suite.
-See the [Day 2 journal](docs/day-02.md) for the learning steps and verification.
-
-## My daily workflow
-
-1. Write the day's code under `src/`; add headers under `include/` when needed.
-2. Save the files and build with **Ctrl+Shift+B**.
-3. Run **Mini Git: test**; add checks for new behavior as the project grows.
-4. Copy `docs/day-template.md` to `docs/day-03.md` (or the current day) and
-   write what I built, learned, tested, and want to do next.
-5. Review and publish the day's source code and notes:
-
-```powershell
-git status
+git status --short
+git diff --check
 git diff
-git add src include docs README.md .gitignore .gitattributes scripts .vscode/tasks.json .vscode/settings.json
-git diff --cached
-git commit -m "Day 3: describe the feature built today"
+git add -A
+git diff --cached --stat
+git commit -m "Day 3: save commits, show history, and organize project"
 git push origin master
 ```
 
-In GitHub Desktop, review **Changes**, enter a short Summary and optional
-Description, **Commit to master**, then **Push origin**. A clean Changes list
-after committing is normal; the files still exist in the repository.
+`master` is the current real Git branch; Mini Git's educational branch is `main`.
+The update does not commit or push automatically. Confirm staged changes contain
+only the intended source, configuration, sample, and documentation.
 
-Source files, documentation, and shared build settings belong on GitHub.
-Executables, generated practice output, and `.minigit/` do not.
-Small practice source files and named sample inputs can be committed as learning examples.
+## Learning notes and limits
 
-## Learning journal
+- [Day 1: initialization](docs/day-01.md)
+- [Day 2: hashing and staging](docs/day-02.md)
+- [Day 3: commits and history](docs/day-03.md)
+- [Daily journal template](docs/day-template.md)
 
-- [Day 1: repository initialization](docs/day-01.md)
-- [Day 2: hashing, object storage, and staging](docs/day-02.md)
-- [Daily summary template](docs/day-template.md)
-
-The original Day 1 commits are preserved. The Day 1 journal separates the initial
-work from setup improvements; the Day 2 journal follows the guided lesson and the
-saved implementation.
+This learning project is not Git-compatible. FNV-1a is not cryptographic.
+Commit/log support only `main`. There is no checkout, branch switching,
+recursive add, staged deletion, path normalization, or locking. Index and branch
+writes are not crash-atomic. Commit messages must be nonempty single lines;
+use ordinary filenames without line breaks. Future work can add crash-safe
+updates and checkout while keeping the core model clear.
