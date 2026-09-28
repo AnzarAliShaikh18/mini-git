@@ -1,92 +1,134 @@
 # Mini Git
 
-A small version-control system written in C++17, built one day at a time to
-learn how Git stores files and connects snapshots into history.
+A small version-control system written in C++17, built one day at a time to learn how Git stores files, stages snapshots, creates commit history, and detects working-directory changes.
 
-**Day 3 complete:** initialize a repository, stage file contents, save commits
-with timestamps and parent links, and display history with `log`.
+**Day 4 complete:** initialize a repository, stage file contents, create commits with timestamps and parent links, display commit history with `log`, and detect modified/deleted files with `status`.
 
 ## Quick start on Windows
 
-Open the whole `D:\mini-git` folder in VS Code. Save your source and press
-**Ctrl+Shift+B** to build. Run these commands from the project root:
+Open the whole `D:\mini-git` folder in VS Code.
+
+Build from the project root:
 
 ```powershell
 cd D:\mini-git
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1
+```
+
+Or compile directly:
+
+```powershell
+g++ src\main.cpp -std=c++17 -o build\minigit.exe
+```
+
+Example workflow:
+
+```powershell
 .\build\minigit.exe init
 .\build\minigit.exe add hello.txt
+.\build\minigit.exe status
 .\build\minigit.exe commit -m "My first commit"
 .\build\minigit.exe log
 ```
 
-Requirements: a C++17-capable `g++` on PATH and PowerShell. This Windows setup
-uses MSYS2 UCRT64 GCC. Debugging uses the Microsoft C/C++ extension and
-`C:/msys64/ucrt64/bin/gdb.exe`; adjust compiler/debugger paths on another machine.
+Requirements:
 
-**Terminal > Run Task > Mini Git: init / add / commit / log** builds first and
-runs from the project root. Add and commit prompt for the filename and message.
-The same commands are available in **Run and Debug** for F5. Always use
-`build/minigit.exe` when running from a terminal.
+- C++17-capable `g++`
+- PowerShell
+- Windows setup currently uses MSYS2 UCRT64 GCC
+
+Always run Mini Git from the project root because `.minigit` paths are currently relative to the working directory.
 
 ## Project structure
-
-The core learning example is:
 
 ```text
 mini-git/
 |-- src/
 |   `-- main.cpp
+|
 |-- hello.txt
-`-- .minigit/                 # Generated locally
-    |-- HEAD
-    |-- index
-    |-- objects/
-    |   |-- <file-content-hash>
-    |   `-- <commit-hash>
-    `-- refs/
-        `-- heads/
-            `-- main
+|
+|-- .minigit/                 # Generated locally
+|   |-- HEAD
+|   |-- index
+|   |
+|   |-- objects/
+|   |   |-- <file-content-hash>
+|   |   `-- <commit-hash>
+|   |
+|   `-- refs/
+|       `-- heads/
+|           `-- main
+|
+|-- .vscode/
+|-- scripts/
+|-- docs/
+|-- build/                    # Generated locally
+|-- .gitignore
+|-- .gitattributes
+`-- README.md
 ```
 
-`index` appears after the first `add`; `refs/heads/main` appears after the first
-successful commit. Hashes are computed from actual content and will differ
-from example values in a lesson.
+`build/` and `.minigit/` are ignored by real Git.
 
-Supporting files remain separate:
+The separate `.git/` directory belongs to the actual Git repository used to track the development of this project.
+
+## Mini Git internal structure
+
+### `.minigit/HEAD`
+
+Contains:
 
 ```text
-.vscode/                     # Build tasks, run/debug configurations, settings
-scripts/                     # build.ps1, run.ps1, test.ps1
-docs/                        # Daily learning notes
-    examples/practice.cpp    # Earlier exercise, excluded from the normal build
-build/                       # Generated executable and local migration backups
-.gitignore                   # Excludes binaries and Mini Git data from real Git
-.gitattributes               # Text and line-ending rules
-README.md
+ref: refs/heads/main
 ```
 
-`src/` contains only program source. `hello.txt` is the tracked sample input.
-`build/` and `.minigit/` are ignored. The separate `.git/` directory contains
-this project's real Git history and is managed by Git itself.
+This tells Mini Git that the currently active branch is `main`.
 
-## Commands
+### `.minigit/refs/heads/main`
 
-| Command | Behavior |
-| --- | --- |
-| `init` | Creates objects, refs/heads, and symbolic HEAD; preserves an existing repository. |
-| `add <file>` | Reads exact bytes, hashes and stores them, and updates the filename/hash index. |
-| `commit -m "message"` | Saves the entire staged snapshot as a commit object and advances main. |
-| `log` | Follows parent links from the newest commit to the first. |
+Contains the hash of the newest commit:
 
-Quote filenames containing spaces. Run from the repository root: metadata paths
-are relative to the current directory. Running `init` inside `src` would create
-a different repository; parent-folder discovery is not implemented.
+```text
+51b6d440d33668c1
+```
 
-## How commits work
+So the relationship is:
 
-Commit text is hashed using the same 64-bit FNV-1a helper as file contents, then
-stored in `.minigit/objects/<commit-hash>`:
+```text
+HEAD
+ |
+ v
+refs/heads/main
+ |
+ v
+latest commit
+```
+
+### `.minigit/index`
+
+Represents the staging area.
+
+Example:
+
+```text
+"hello.txt" e7fe8f5add1063c2
+"main.cpp"  91c28a...
+```
+
+Meaning:
+
+```text
+filename -> staged file-content hash
+```
+
+### `.minigit/objects/`
+
+Stores both file-content objects and commit objects.
+
+A file object contains the exact bytes of a staged file.
+
+A commit object contains information such as:
 
 ```text
 message My first commit
@@ -96,74 +138,222 @@ parent none
 "hello.txt" <file-content-hash>
 ```
 
-Later commits store the previous commit's hash in `parent`. A commit reads the
-index and stored objects, so editing a working file after `add` does not change
-the staged version. Run `add` again to stage new contents.
+Later commits store the previous commit's hash as their parent.
 
-The index remains after a commit and represents the complete next snapshot;
-unchanged files stay included. This version permits a new commit without file
-changes and does not implement Git's "nothing changed" detection.
+## Commands
 
-```text
-HEAD -> refs/heads/main -> newest commit -> parent -> earlier commit
-                              |
-                              +-> filename/hash entries -> saved file objects
-```
+| Command | Behavior |
+| --- | --- |
+| `init` | Creates `.minigit`, `objects`, `refs/heads`, and symbolic `HEAD`. |
+| `add <file>` | Reads exact file bytes, hashes them, stores the object, and updates the staging index. |
+| `commit -m "message"` | Creates a commit snapshot from the index and advances `main`. |
+| `log` | Walks through parent commit links from newest to oldest. |
+| `status` | Compares working files with staged hashes and reports unchanged, modified, or deleted files. |
 
-Edit and save `hello.txt`, then try a second commit:
+Example:
 
 ```powershell
 .\build\minigit.exe add hello.txt
+.\build\minigit.exe status
+```
+
+Immediately after staging:
+
+```text
+hello.txt - unchanged
+```
+
+If `hello.txt` is edited without running `add` again:
+
+```text
+hello.txt - modified
+```
+
+If the file is removed:
+
+```text
+hello.txt - deleted
+```
+
+Running `add` again updates the staged version.
+
+## How object storage works
+
+When a file is staged:
+
+```text
+hello.txt
+    |
+    v
+read exact bytes
+    |
+    v
+FNV-1a hash
+    |
+    v
+.minigit/objects/<hash>
+    |
+    v
+update .minigit/index
+```
+
+The hash acts as the object's identifier.
+
+If two files contain identical bytes, they produce the same hash and can reuse the same stored object.
+
+Mini Git currently uses 64-bit FNV-1a for educational simplicity. It is not intended to provide cryptographic collision resistance.
+
+## How commits work
+
+Running:
+
+```powershell
 .\build\minigit.exe commit -m "Update hello"
-.\build\minigit.exe log
-$commitHash = (Get-Content .\.minigit\refs\heads\main -Raw).Trim()
-Get-Content ".\.minigit\objects\$commitHash"
 ```
 
-The second commit's parent points to the first. Log prints newest first.
+causes Mini Git to:
 
-## Verification
+1. Read the staging index.
+2. Find the previous commit.
+3. Add the commit message and timestamp.
+4. Store filename/hash pairs.
+5. Hash the complete commit data.
+6. Store the commit inside `.minigit/objects/`.
+7. Update `.minigit/refs/heads/main`.
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\test.ps1
+Commit history therefore looks like:
+
+```text
+HEAD
+ |
+ v
+main
+ |
+ v
+Commit C
+ |
+ | parent
+ v
+Commit B
+ |
+ | parent
+ v
+Commit A
+ |
+ v
+none
 ```
 
-Or run **Mini Git: test** in VS Code to build and test together. The suite passes
-**69 checks** covering initialization, known hashes, duplicate object reuse,
-spaces in paths/messages, exact staged snapshots, commit hashes, parent links,
-three-commit history, empty/binary files, and missing or corrupt data. Tests use
-a fresh temporary directory and preserve your real `.minigit` data. The build
-enables C++17 and compiler warnings.
+A commit refers to file objects rather than storing the same file contents repeatedly.
 
-## Commit and push Day 3 with real Git
+## How `log` works
 
-Review the changes before publishing:
+`log` begins with the hash stored in:
 
-```powershell
-git status --short
-git diff --check
-git diff
-git add -A
-git diff --cached --stat
-git commit -m "Day 3: save commits, show history, and organize project"
-git push origin master
+```text
+.minigit/refs/heads/main
 ```
 
-`master` is the current real Git branch; Mini Git's educational branch is `main`.
-The update does not commit or push automatically. Confirm staged changes contain
-only the intended source, configuration, sample, and documentation.
+It reads that commit and then follows its `parent` field repeatedly until:
 
-## Learning notes and limits
+```text
+parent none
+```
 
-- [Day 1: initialization](docs/day-01.md)
-- [Day 2: hashing and staging](docs/day-02.md)
-- [Day 3: commits and history](docs/day-03.md)
-- [Daily journal template](docs/day-template.md)
+Example:
 
-This learning project is not Git-compatible. FNV-1a is not cryptographic.
-Commit/log support only `main`. There is no checkout, branch switching,
-recursive add, staged deletion, path normalization, or locking. Index and branch
-writes are not crash-atomic. Commit messages must be nonempty single lines;
-use ordinary filenames without line breaks. Future work can add crash-safe
-updates and checkout while keeping the core model clear.
+```text
+commit 51b6d440d33668c1
+Timestamp: 1790609520
+Parent: c9dcf2ab42b31aca
+Message: second commit
+
+commit c9dcf2ab42b31aca
+Timestamp: 1790499375
+Parent: none
+Message: Day 3: save hello snapshot
+```
+
+## How `status` works
+
+The staging index contains the hash of the last staged version of each file.
+
+Mini Git hashes the current working file again and compares both hashes:
+
+```text
+staged hash == current hash
+        |
+       yes
+        |
+   unchanged
+```
+
+If they differ:
+
+```text
+staged hash != current hash
+        |
+     modified
+```
+
+If the file no longer exists:
+
+```text
+deleted
+```
+
+This demonstrates one of the main reasons content hashes are useful in version-control systems.
+
+## Current architecture
+
+```text
+Working directory
+       |
+       | minigit add
+       v
+Staging index
+       |
+       | minigit commit
+       v
+Commit object
+       |
+       +----> file hashes
+       |         |
+       |         v
+       |      objects/
+       |
+       +----> parent commit
+                  |
+                  v
+             older commit
+```
+
+## Learning progress
+
+- Day 1 — Repository initialization and filesystem basics
+- Day 2 — File reading, hashing, object storage, and staging index
+- Day 3 — Commit objects, timestamps, parent links, and commit history
+- Day 4 — `log`, history traversal, and working-directory `status`
+- Day 5 — Branches and checkout
+- Day 6 — Restore / checkout snapshots and stronger error handling
+- Day 7 — Cleanup, testing, documentation, and interview preparation
+
+## Current limitations
+
+Mini Git is an educational project and is not compatible with real Git.
+
+Currently it does not support:
+
+- Multiple branches
+- Checkout
+- Restoring complete snapshots
+- Recursive directory staging
+- Staged deletions
+- Merge
+- Remote repositories
+- Crash-atomic index updates
+- Cryptographic hashing
+- Git object compression
+- Parent-directory repository discovery
+
+These limitations are intentional while the core version-control concepts are being built step by step.

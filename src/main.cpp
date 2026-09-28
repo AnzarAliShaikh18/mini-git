@@ -467,12 +467,106 @@ bool showLog()
     }
     return true;
 }
+std::string getLatestCommit()
+{
+    std::ifstream branchFile(".minigit/refs/heads/main");
+
+    if (!branchFile)
+    {
+        return "";
+    }
+
+    std::string commitHash;
+    branchFile >> commitHash;
+
+    return commitHash;
+}
+std::string getFileHash(const std::string& filePath)
+{
+    std::ifstream file(filePath, std::ios::binary);
+
+    if (!file)
+    {
+        return "";
+    }
+
+    std::string content;
+    char byte;
+
+    while (file.get(byte))
+    {
+        content.push_back(byte);
+    }
+
+    if (file.bad())
+    {
+        return "";
+    }
+
+    return hashContent(content);
+}
+
+bool showStatus()
+{
+    std::map<std::string, std::string> staged;
+
+    if (!readIndex(staged))
+    {
+        return false;
+    }
+
+    if (staged.empty())
+    {
+        std::cout << "No files staged.\n";
+        return true;
+    }
+
+    std::cout << "Mini Git status:\n\n";
+
+    for (const auto& entry : staged)
+    {
+        std::string filePath = entry.first;
+        std::string stagedHash = entry.second;
+
+        if (!fs::exists(filePath))
+        {
+            std::cout << filePath << " - deleted\n";
+            continue;
+        }
+
+        std::string currentHash = getFileHash(filePath);
+
+        if (currentHash.empty())
+        {
+            std::cerr << "Could not read: "
+                      << filePath << "\n";
+            continue;
+        }
+
+        if (currentHash == stagedHash)
+        {
+            std::cout << filePath
+                      << " - unchanged\n";
+        }
+        else
+        {
+            std::cout << filePath
+                      << " - modified\n";
+        }
+    }
+
+    return true;
+}
+
+
+
+
 
 int main(int argc, char* argv[])
 {
     if (argc < 2)
     {
-        std::cerr << "Usage: minigit <command>\nAvailable commands: init, add, commit, log\n";
+        std::cerr << "Usage: minigit <command>\nAvailable commands: init, add, commit, log, status\n";
         return 1;
     }
     const std::string command = argv[1];
@@ -514,7 +608,19 @@ int main(int argc, char* argv[])
             }
             return showLog() ? 0 : 1;
         }
-        std::cerr << "Unknown command: " << command << "\n";
+
+        if (command == "status")
+        {
+        if (argc != 2)
+        {
+            std::cerr << "Usage: minigit status\n";
+            return 1;
+        }
+
+        return showStatus() ? 0 : 1;
+        }
+        std::cerr<< "Usage: minigit <command>\n"<< "Available commands: init, add, commit, log, status\n";
+        //std::cerr << "Unknown command: " << command << "\n";
         return 1;
     }
     catch (const fs::filesystem_error& error)
