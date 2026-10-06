@@ -336,7 +336,7 @@ Commit object
 - Day 4 — `log`, history traversal, and working-directory `status`
 - Day 5 — Branches and checkout
 - Day 6 — Restore / checkout snapshots and stronger error handling
-- Day 7 — Cleanup, testing, documentation, and interview preparation
+- Day 7 — Cleanup, testing, documentation
 
 ## Current limitations
 
